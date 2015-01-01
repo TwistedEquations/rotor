@@ -16,8 +16,7 @@
 
 package com.android.rotor;
 
-import android.os.Handler;
-import android.os.Looper;
+import android.os.*;
 
 import com.android.rotor.toolbox.Rotor;
 
@@ -37,6 +36,9 @@ public class RotorTask implements Runnable {
 
     @Override
     public void run() {
+
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+
         player.preformAction(action);
         handler.post(new Runnable() {
             @Override

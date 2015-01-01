@@ -75,6 +75,7 @@ public class Rotor implements Runnable {
 
     public void stop() {
         run = false;
+        rotorAsync.stop();
         synchronized (lock) {
             if(paused) {
                 lock.notifyAll();

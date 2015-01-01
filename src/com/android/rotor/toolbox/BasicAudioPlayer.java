@@ -46,9 +46,7 @@ public class BasicAudioPlayer implements Player, Runnable {
     private int bitrate = 0;
     private long presentationTimeUs = 0;
     private long duration = 0;
-    private long startTime;
-    private boolean loadNextSource;
-    private volatile long cachedDuration;
+    private boolean isRunning;
 
     private AtomicInteger currentState = new AtomicInteger(Rotor.STATE_WAITING);
     private CountDownLatch resetLatch;
@@ -116,12 +114,14 @@ public class BasicAudioPlayer implements Player, Runnable {
     }
 
     private void reset() {
-        resetLatch = new CountDownLatch(1);
-        stop = true;
-        try {
-            resetLatch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if(isRunning) {
+            resetLatch = new CountDownLatch(1);
+            stop = true;
+            try {
+                resetLatch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -137,6 +137,8 @@ public class BasicAudioPlayer implements Player, Runnable {
 
     @Override
     public void run() {
+
+        isRunning = true;
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO);
 
         //Main loop for the playerlist
@@ -216,8 +218,6 @@ public class BasicAudioPlayer implements Player, Runnable {
             int noOutputCounterLimit = 10;
 
             currentState.set(Rotor.STATE_PLAYING);
-
-            startTime = System.currentTimeMillis();
             while (!sawOutputEOS && noOutputCounter < noOutputCounterLimit && !stop) {
 
                 // pause implementation
@@ -240,7 +240,7 @@ public class BasicAudioPlayer implements Player, Runnable {
                         }
                         else {
                             presentationTimeUs = extractor.getSampleTime();
-                            this.cachedDuration = extractor.getCachedDuration();
+                            long cachedDuration = extractor.getCachedDuration();
 
                             //if the player is in the middle of a seek dont update the onPlayUpdate
                             currentState.set(Rotor.STATE_PLAYING);
@@ -347,7 +347,7 @@ public class BasicAudioPlayer implements Player, Runnable {
                 resetLatch.countDown();
             }
         }
-
+        isRunning = false;
     }
 
     // A pause mechanism that would block getCurrent thread when pause flag is set (READY_TO_PLAY)
