@@ -24,6 +24,7 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.util.Log;
 
+import com.android.rotor.Action;
 import com.android.rotor.Player;
 import com.android.rotor.Playlist;
 
@@ -32,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class BasicAudioPlayer implements Player, Runnable {
+public class BasicAudioPlayer extends Player implements Runnable {
     //Dependencies
     private Playlist playlist;
 
@@ -48,7 +49,6 @@ public class BasicAudioPlayer implements Player, Runnable {
     private long duration = 0;
     private boolean isRunning;
 
-    private AtomicInteger currentState = new AtomicInteger(Rotor.STATE_WAITING);
     private CountDownLatch resetLatch;
     private CountDownLatch pauseLatch;
     private boolean isPreformingAction;
@@ -59,30 +59,19 @@ public class BasicAudioPlayer implements Player, Runnable {
     }
 
     @Override
-    public int getState() {
-        return currentState.get();
-    }
-
-    @Override
-    public boolean seek(long millis) {
-        return false;
-    }
-
-    @Override
-    public void preformAction(int action) {
+    public void preformAction(Action action) {
 
         if(isPreformingAction) {
             throw new IllegalStateException("Player is already preforming an action");
         }
 
+        int actionInt = action.getAction();
+
         isPreformingAction = true;
 
-        switch (action) {
+        switch (actionInt) {
             case Rotor.ACTION_PLAY:
-                stop = false;
-                Thread thread = new Thread(this);
-                thread.setName("Rotor Basic Audio Player Thread");
-                thread.start();
+                play();
                 break;
 
             case Rotor.ACTION_PAUSE:
@@ -109,8 +98,19 @@ public class BasicAudioPlayer implements Player, Runnable {
         isPreformingAction = false;
     }
 
-    public boolean isPreformingAction() {
-        return isPreformingAction;
+    private void play() {
+        stop = false;
+        if(isRunning && getState() != Rotor.STATE_PAUSED) {
+            return;
+        }
+        if(getState() != Rotor.STATE_PAUSED) {
+            Thread thread = new Thread(this);
+            thread.setName("Rotor Basic Audio Player Thread");
+            thread.start();
+        }
+        else {
+            resume();
+        }
     }
 
     private void reset() {
@@ -123,16 +123,22 @@ public class BasicAudioPlayer implements Player, Runnable {
                 e.printStackTrace();
             }
         }
+        setState(Rotor.STATE_WAITING);
     }
 
     private void pause() {
         pauseLatch = new CountDownLatch(1);
-        currentState.set(Rotor.STATE_PAUSED);
+        setState(Rotor.STATE_PAUSED);
         try {
             pauseLatch.await();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private synchronized void resume() {
+        setState(Rotor.STATE_PLAYING);
+        this.notifyAll();
     }
 
     @Override
@@ -148,13 +154,18 @@ public class BasicAudioPlayer implements Player, Runnable {
 
             // extractor gets information about the stream
             extractor = new MediaExtractor();
-
-            //TODO hook up
-            currentState.set(Rotor.STATE_BUFFERING);
+            setState(Rotor.STATE_BUFFERING);
             try {
-                extractor.setDataSource(playlist.getCurrent());
+                String source = playlist.getCurrent();
+                if(source == null) {
+                    stop = true;
+                }
+                else {
+                    extractor.setDataSource(playlist.getCurrent());
+                    playlist.next();
+                }
             } catch (IOException e) {
-                currentState.set(Rotor.STATE_ERROR);
+                setState(Rotor.STATE_ERROR);
                 return;
             }
 
@@ -176,7 +187,7 @@ public class BasicAudioPlayer implements Player, Runnable {
 
             // check we have audio content we know
             if (format == null || !mime.startsWith("audio/")) {
-                currentState.set(Rotor.STATE_ERROR);
+                setState(Rotor.STATE_ERROR);
                 return;
             }
 
@@ -186,12 +197,13 @@ public class BasicAudioPlayer implements Player, Runnable {
                 codec = MediaCodec.createDecoderByType(mime);
             } catch (IOException e) {
                 e.printStackTrace();
-                currentState.set(Rotor.STATE_ERROR);
+                setState(Rotor.STATE_ERROR);
+                return;
             }
 
             // check we have a valid codec instance
             if (codec == null) {
-                currentState.set(Rotor.STATE_ERROR);
+                setState(Rotor.STATE_ERROR);
                 return;
             }
 
@@ -217,7 +229,7 @@ public class BasicAudioPlayer implements Player, Runnable {
             int noOutputCounter = 0;
             int noOutputCounterLimit = 10;
 
-            currentState.set(Rotor.STATE_PLAYING);
+            setState(Rotor.STATE_PLAYING);
             while (!sawOutputEOS && noOutputCounter < noOutputCounterLimit && !stop) {
 
                 // pause implementation
@@ -243,7 +255,7 @@ public class BasicAudioPlayer implements Player, Runnable {
                             long cachedDuration = extractor.getCachedDuration();
 
                             //if the player is in the middle of a seek dont update the onPlayUpdate
-                            currentState.set(Rotor.STATE_PLAYING);
+                            setState(Rotor.STATE_PLAYING);
                         }
 
                         codec.queueInputBuffer(inputBufIndex, 0, sampleSize, presentationTimeUs, sawInputEOS ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
@@ -341,18 +353,17 @@ public class BasicAudioPlayer implements Player, Runnable {
             presentationTimeUs = 0;
             duration = 0;
 
-            currentState.set(Rotor.STATE_WAITING);
-
-            if(stop && resetLatch != null) {
-                resetLatch.countDown();
-            }
+            setState(Rotor.STATE_WAITING);
+        }
+        if(stop && resetLatch != null) {
+            resetLatch.countDown();
         }
         isRunning = false;
     }
 
     // A pause mechanism that would block getCurrent thread when pause flag is set (READY_TO_PLAY)
     public synchronized void waitPlay(){
-        while(currentState.get() == Rotor.STATE_PAUSED) {
+        while(getState() == Rotor.STATE_PAUSED) {
             pauseLatch.countDown();
             try {
                 ((Object)this).wait();

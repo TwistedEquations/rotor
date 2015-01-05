@@ -30,9 +30,10 @@ public class BasicPlaylist implements Playlist {
 
     @Override
     public String getCurrent() {
-        String source = list.get(position);
-        position ++;
-        return source;
+        if(position >= 0 && position < list.size()) {
+            return list.get(position);
+        }
+        return null;
     }
 
     @Override

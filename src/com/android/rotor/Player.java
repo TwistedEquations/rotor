@@ -16,11 +16,38 @@
 
 package com.android.rotor;
 
-public interface Player {
+import com.android.rotor.toolbox.Rotor;
 
-    public void preformAction(int action);
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
-    public int getState();
+public abstract class Player {
 
-    public boolean seek(long millis);
+    private Set<StateListener> listeners = new HashSet<>();
+    private AtomicInteger currentState = new AtomicInteger(Rotor.STATE_WAITING);
+
+    public void addListener(StateListener listener) {
+        this.listeners.add(listener);
+    }
+
+    public void removeListener(StateListener listener) {
+        this.listeners.remove(listener);
+    }
+
+    protected void notifyListeners() {
+        for(StateListener listener : listeners) {
+            listener.onStateChange(getState());
+        }
+    }
+
+    protected void setState(int state) {
+        currentState.set(state);
+    }
+
+    public abstract void preformAction(Action action);
+
+    public int getState() {
+        return currentState.get();
+    }
 }

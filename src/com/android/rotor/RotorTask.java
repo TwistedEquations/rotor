@@ -24,11 +24,11 @@ import com.android.rotor.toolbox.Rotor;
 public class RotorTask implements Runnable {
 
     private Player player;
-    private int action;
+    private Action action;
     private TaskListener actionFinishedListener;
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    public RotorTask(Player player, int action, TaskListener actionFinishedListener) {
+    public RotorTask(Player player, Action action, TaskListener actionFinishedListener) {
         this.player = player;
         this.action = action;
         this.actionFinishedListener = actionFinishedListener;
@@ -60,6 +60,6 @@ public class RotorTask implements Runnable {
             return actionninishedListener;
         }
 
-        public abstract void onTaskFinished(int action, Rotor.ActionFinishedListener actionFinishedListener1);
+        public abstract void onTaskFinished(Action action, Rotor.ActionFinishedListener actionFinishedListener1);
     }
 }

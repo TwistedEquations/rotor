@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 30/12/2014 Patrick
+ * Copyright (C) 03/01/2015 Patrick
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,11 @@
 
 package com.android.rotor;
 
-/**
- * Wrapper around the metadata to be passed by to the system
- *
- */
-public class MetaData {
+public interface RemoteControl {
 
-    public String title;
+    public void updateState(int state);
 
-    public String artist;
+    public MetaData requestMetaData();
 
+    public void updateMetaData(MetaData metaData);
 }
