@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.rotor;
+package com.twistedequations.rotor;
 
 import java.util.concurrent.LinkedBlockingQueue;
 

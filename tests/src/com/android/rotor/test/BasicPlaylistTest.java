@@ -16,8 +16,8 @@
 
 package com.android.rotor.test;
 
-import com.android.rotor.Playlist;
-import com.android.rotor.toolbox.BasicPlaylist;
+import com.twistedequations.rotor.Playlist;
+import com.twistedequations.rotor.toolbox.BasicPlaylist;
 
 import junit.framework.TestCase;
 

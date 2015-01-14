@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.rotor.toolbox;
+package com.twistedequations.rotor.toolbox;
 
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -22,16 +22,17 @@ import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
-import com.android.rotor.Action;
-import com.android.rotor.Player;
-import com.android.rotor.Playlist;
+import com.twistedequations.rotor.Action;
+import com.twistedequations.rotor.Player;
+import com.twistedequations.rotor.Playlist;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class BasicAudioPlayer extends Player implements Runnable {
     //Dependencies
@@ -90,7 +91,7 @@ public class BasicAudioPlayer extends Player implements Runnable {
                 }
                 break;
 
-            case Rotor.ACTION_RESET:
+            case Rotor.ACTION_STOP:
                 reset();
                 break;
         }
@@ -100,7 +101,7 @@ public class BasicAudioPlayer extends Player implements Runnable {
 
     private void play() {
         stop = false;
-        if(isRunning && getState() != Rotor.STATE_PAUSED) {
+        if(isRunning && getState() == Rotor.STATE_PLAYING) {
             return;
         }
         if(getState() != Rotor.STATE_PAUSED) {
@@ -114,6 +115,9 @@ public class BasicAudioPlayer extends Player implements Runnable {
     }
 
     private void reset() {
+        if(getState() == Rotor.STATE_PAUSED) {
+            resume();
+        }
         if(isRunning) {
             resetLatch = new CountDownLatch(1);
             stop = true;
@@ -143,7 +147,6 @@ public class BasicAudioPlayer extends Player implements Runnable {
 
     @Override
     public void run() {
-
         isRunning = true;
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO);
 
@@ -162,7 +165,6 @@ public class BasicAudioPlayer extends Player implements Runnable {
                 }
                 else {
                     extractor.setDataSource(playlist.getCurrent());
-                    playlist.next();
                 }
             } catch (IOException e) {
                 setState(Rotor.STATE_ERROR);
@@ -226,23 +228,21 @@ public class BasicAudioPlayer extends Player implements Runnable {
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             boolean sawInputEOS = false;
             boolean sawOutputEOS = false;
-            int noOutputCounter = 0;
-            int noOutputCounterLimit = 10;
 
-            setState(Rotor.STATE_PLAYING);
-            while (!sawOutputEOS && noOutputCounter < noOutputCounterLimit && !stop) {
-
+            while (!sawOutputEOS && !stop) {
                 // pause implementation
                 waitPlay();
-                noOutputCounter++;
 
                 // read a buffer before feeding it to the decoder
                 if (!sawInputEOS) {
                     int inputBufIndex = codec.dequeueInputBuffer(kTimeOutUs);
 
                     if (inputBufIndex >= 0) {
+
                         ByteBuffer dstBuf = codecInputBuffers[inputBufIndex];
 
+                        //Post delayed to set buffering
+                        //handler.postDelayed(bufferingRunnable, 1000);
                         int sampleSize = extractor.readSampleData(dstBuf, 0);
 
                         if (sampleSize < 0) {
@@ -253,9 +253,6 @@ public class BasicAudioPlayer extends Player implements Runnable {
                         else {
                             presentationTimeUs = extractor.getSampleTime();
                             long cachedDuration = extractor.getCachedDuration();
-
-                            //if the player is in the middle of a seek dont update the onPlayUpdate
-                            setState(Rotor.STATE_PLAYING);
                         }
 
                         codec.queueInputBuffer(inputBufIndex, 0, sampleSize, presentationTimeUs, sawInputEOS ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
@@ -273,18 +270,21 @@ public class BasicAudioPlayer extends Player implements Runnable {
                 int outputBufIndex = codec.dequeueOutputBuffer(info, kTimeOutUs);
 
                 if (outputBufIndex >= 0) {
-                    if (info.size > 0)  {
-                        noOutputCounter = 0;
-                    }
 
                     ByteBuffer buf = codecOutputBuffers[outputBufIndex];
+
+                    //if the player is playing smoothly the buffering state will not be set
+                    //handler.removeCallbacks(bufferingRunnable);
 
                     //Using a byte array pool from volley to prevent heap churn
                     final byte[] chunk = byteArrayPool.getBuffer(info.size);
                     buf.get(chunk);
                     buf.clear();
                     if(chunk.length > 0 && audioTrack != null){
-                        audioTrack.write(chunk,0,chunk.length);
+                        audioTrack.write(chunk, 0, chunk.length);
+
+                        waitPlay();
+                        setState(Rotor.STATE_PLAYING);
                     }
 
                     codec.releaseOutputBuffer(outputBufIndex, false);
@@ -354,12 +354,20 @@ public class BasicAudioPlayer extends Player implements Runnable {
             duration = 0;
 
             setState(Rotor.STATE_WAITING);
+
         }
         if(stop && resetLatch != null) {
             resetLatch.countDown();
         }
         isRunning = false;
     }
+
+    private Runnable bufferingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            setState(Rotor.STATE_BUFFERING);
+        }
+    };
 
     // A pause mechanism that would block getCurrent thread when pause flag is set (READY_TO_PLAY)
     public synchronized void waitPlay(){

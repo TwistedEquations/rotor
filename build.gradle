@@ -19,7 +19,7 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 21
-    buildToolsVersion "21.1.1"
+    buildToolsVersion "21.1.2"
 
     defaultConfig {
         minSdkVersion 16
@@ -36,7 +36,7 @@ android {
 
     sourceSets {
         defaultConfig {
-            testApplicationId 'com.redwindsoftware.internal.tests'
+            testApplicationId 'com.rotor.tests'
         }
 
         main {
@@ -65,7 +65,5 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:21.0.2'
-    compile "com.google.code.gson:gson:2.3"
-    compile "com.android.support:appcompat-v7:21.0.2"
+    compile 'com.android.support:support-v4:21.0.3'
 }

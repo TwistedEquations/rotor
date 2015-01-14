@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package com.android.rotor.toolbox;
+package com.twistedequations.rotor.toolbox;
 
-import com.android.rotor.Playlist;
+import com.twistedequations.rotor.Playlist;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class BasicPlaylist implements Playlist {
 

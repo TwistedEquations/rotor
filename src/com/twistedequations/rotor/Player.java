@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.android.rotor;
+package com.twistedequations.rotor;
 
-import com.android.rotor.toolbox.Rotor;
+import com.twistedequations.rotor.toolbox.Rotor;
 
 import java.util.HashSet;
 import java.util.Set;

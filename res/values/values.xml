@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notif_background">@color/transparent</color>
+    <color name="transparent">#00000000</color>
+    <color name="dark_gray">#A9A9A9</color>
+    <color name="white_lilac">#E9E9E9</color>
+    <color name="white_20">#33FFFFFF</color>
+
+    <item name="rotor_notification_id" type="id"/>
+    <item name="rotor_action_id" type="id"/>
+</resources>

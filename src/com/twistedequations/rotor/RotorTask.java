@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.android.rotor;
+package com.twistedequations.rotor;
 
 import android.os.*;
 
-import com.android.rotor.toolbox.Rotor;
+import com.twistedequations.rotor.toolbox.Rotor;
 
 
 public class RotorTask implements Runnable {
@@ -50,14 +50,14 @@ public class RotorTask implements Runnable {
 
     public static abstract class TaskListener {
 
-        private Rotor.ActionFinishedListener actionninishedListener;
+        private Rotor.ActionFinishedListener actionFinishedListener;
 
-        protected TaskListener(Rotor.ActionFinishedListener actionninishedListener) {
-            this.actionninishedListener = actionninishedListener;
+        protected TaskListener(Rotor.ActionFinishedListener actionFinishedListener) {
+            this.actionFinishedListener = actionFinishedListener;
         }
 
         private Rotor.ActionFinishedListener getActionFinishedListener() {
-            return actionninishedListener;
+            return actionFinishedListener;
         }
 
         public abstract void onTaskFinished(Action action, Rotor.ActionFinishedListener actionFinishedListener1);

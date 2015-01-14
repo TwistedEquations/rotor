@@ -1,16 +1,21 @@
 
 
-package com.android.rotor.toolbox;
+package com.twistedequations.rotor.toolbox;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.*;
 import android.os.Process;
 
-import com.android.rotor.Action;
-import com.android.rotor.Player;
-import com.android.rotor.Playlist;
-import com.android.rotor.RotorAsync;
-import com.android.rotor.RotorTask;
-import com.android.rotor.StateListener;
+import com.twistedequations.rotor.Action;
+import com.twistedequations.rotor.MediaControl;
+import com.twistedequations.rotor.MediaControlListener;
+import com.twistedequations.rotor.Player;
+import com.twistedequations.rotor.RotorAsync;
+import com.twistedequations.rotor.RotorTask;
+import com.twistedequations.rotor.StateListener;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -18,10 +23,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Overall class for contolling the player an listening to events
+ * Overall class for controlling the player an listening to events
  *
  */
 public class Rotor implements Runnable {
+
+    public static final String INTENT_ACTION = "com.twistedequations.rotor";
+    public static final String INTENT_KEY = "com.twistedequations.rotor.ACTION";
 
     public static final int STATE_PLAYING = 2;
     public static final int STATE_PAUSED = 3;
@@ -31,11 +39,12 @@ public class Rotor implements Runnable {
 
     public static final int ACTION_PLAY = 7;
     public static final int ACTION_PAUSE = 8;
-    public static final int ACTION_RESET = 9;
+    public static final int ACTION_STOP = 9;
     public static final int ACTION_NEXT = 10;
     public static final int ACTION_PREV = 12;
     public static final int ACTION_SEEK = 13;
 
+    private Context context;
     private Player player;
     private Set<StateListener> listeners = Collections.synchronizedSet(new HashSet<StateListener>());
     private RotorAsync rotorAsync = new RotorAsync();
@@ -45,38 +54,40 @@ public class Rotor implements Runnable {
     private boolean paused;
     private AtomicInteger currentState = new AtomicInteger(STATE_WAITING);
     private Handler handler = new Handler(Looper.getMainLooper());
+    private Set<MediaControl> mediaControls = new HashSet<>();
 
-    public Rotor(Player player) {
+    public Rotor(Context context, Player player) {
+        this.context = context.getApplicationContext();
         this.player = player;
         this.player.addListener(playerListener);
-        rotorAsync.start();
     }
 
     public void addListener(StateListener listener) {
-        this.listeners.add(listener);
+        synchronized (listeners) {
+            this.listeners.add(listener);
+        }
     }
 
     public void removeListener(StateListener listener) {
-        this.listeners.remove(listener);
+        synchronized (listeners) {
+            this.listeners.remove(listener);
+        }
+    }
+
+    public void addControl(MediaControl control) {
+        synchronized (mediaControls) {
+            this.mediaControls.add(control);
+        }
+    }
+
+    public void removeControl(MediaControl control) {
+        synchronized (mediaControls) {
+            this.mediaControls.remove(control);
+        }
     }
 
     public void asyncAction(Action action, ActionFinishedListener actionFinishedListener) {
         RotorTask rotorTask = new RotorTask(player, action, new RotorTask.TaskListener(actionFinishedListener) {
-            @Override
-            public void onTaskFinished(Action action, ActionFinishedListener finishedListener) {
-                finishedListener.onActionFinished(action);
-                synchronized (lock) {
-                    if(paused) {
-                        lock.notifyAll();
-                    }
-                }
-            }
-        });
-        rotorAsync.add(rotorTask);
-    }
-
-    public void asyncAction(Action action) {
-        RotorTask rotorTask = new RotorTask(player, action, new RotorTask.TaskListener(null) {
             @Override
             public void onTaskFinished(Action action, ActionFinishedListener finishedListener) {
                 if(finishedListener != null) {
@@ -92,10 +103,31 @@ public class Rotor implements Runnable {
         rotorAsync.add(rotorTask);
     }
 
-    public void stop() {
+    public void asyncAction(Action action) {
+        asyncAction(action, null);
+    }
+
+    public void start() {
+        run = true;
+        Thread thread = new Thread(this, "Rotor state thread");
+        thread.start();
+        rotorAsync.start();
+
+        IntentFilter intentFilter = new IntentFilter(Rotor.INTENT_ACTION);
+        context.registerReceiver(broadcastReceiver, intentFilter);
+
+        synchronized (mediaControls) {
+            for(MediaControl mediaControl : mediaControls) {
+                mediaControl.create();
+            }
+        }
+    }
+
+    public void destroy() {
         listeners.clear();
         run = false;
         rotorAsync.stop();
+        context.unregisterReceiver(broadcastReceiver);
         synchronized (lock) {
             if(paused) {
                 lock.notifyAll();
@@ -103,16 +135,19 @@ public class Rotor implements Runnable {
             paused = false;
         }
         currentState.set(STATE_WAITING);
+        synchronized (listeners) {
+            this.listeners.clear();
+        }
+        synchronized (mediaControls) {
+            for(MediaControl mediaControl : mediaControls) {
+                mediaControl.destroy();
+            }
+            mediaControls.clear();
+        }
     }
 
     public int getState() {
         return currentState.get();
-    }
-
-    public void start() {
-        run = true;
-        Thread thread = new Thread(this, "Rotor state thread");
-        thread.start();
     }
 
     public void updateState() {
@@ -151,8 +186,16 @@ public class Rotor implements Runnable {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                for(StateListener listener : listeners) {
-                    listener.onStateChange(state);
+                synchronized (listeners) {
+                    for(StateListener listener : listeners) {
+                        listener.onStateChange(state);
+                    }
+                }
+
+                synchronized (mediaControls) {
+                    for(MediaControl mediaControl : mediaControls) {
+                        mediaControl.updateState(state);
+                    }
                 }
             }
         });
@@ -165,8 +208,15 @@ public class Rotor implements Runnable {
         }
     };
 
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Action action = intent.getParcelableExtra(Rotor.INTENT_KEY);
+            asyncAction(action);
+        }
+    };
+
     public interface ActionFinishedListener {
         public void onActionFinished(Action action);
     }
-
 }
