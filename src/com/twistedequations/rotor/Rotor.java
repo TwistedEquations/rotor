@@ -124,7 +124,7 @@ public class Rotor implements Runnable {
         }
     }
 
-    public void destroy() {
+    public void stop() {
         listeners.clear();
         run = false;
         rotorTaskQueue.stop();
