@@ -16,12 +16,13 @@
 
 package com.twistedequations.rotor;
 
-import com.twistedequations.rotor.toolbox.Rotor;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Player interface used in rotor. This abstract class manages the set of listeners for the player state and also notifies the listenrs
+ */
 public abstract class Player {
 
     private Set<StateListener> listeners = new HashSet<>();
@@ -43,9 +44,12 @@ public abstract class Player {
 
     protected void setState(int state) {
         currentState.set(state);
+        notifyListeners();
     }
 
     public abstract void preformAction(Action action);
+
+    public abstract Position getPosition();
 
     public int getState() {
         return currentState.get();

@@ -35,8 +35,10 @@ import android.widget.RemoteViews;
 import com.twistedequations.rotor.Action;
 import com.twistedequations.rotor.KitkatMediaButtonReceiver;
 import com.twistedequations.rotor.MediaControl;
-import com.twistedequations.rotor.MetaData;
+import com.twistedequations.rotor.MediaDescriptionCompat;
+import com.twistedequations.rotor.MediaMetadataCompat;
 import com.twistedequations.rotor.R;
+import com.twistedequations.rotor.Rotor;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -95,7 +97,7 @@ public class DefaultRemoteControl implements MediaControl {
     }
 
     @Override
-    public void onUpdateMetaData(MetaData metaData) {
+    public void onUpdateMetaData(MediaMetadataCompat metaData) {
         control.onUpdateMetaData(metaData);
     }
 
@@ -133,13 +135,13 @@ public class DefaultRemoteControl implements MediaControl {
         public abstract void dimiss();
         public abstract void destroy();
         public abstract void updateAction(Collection<Action> actions);
-        public abstract void onUpdateMetaData(MetaData metaData);
+        public abstract void onUpdateMetaData(MediaMetadataCompat metaData);
     }
 
     private class DefaultControlImpl extends Control {
 
         private List<Action> mActions = new ArrayList<>(10);
-        private MetaData mMedaData;
+        private MediaMetadataCompat mMedaData;
 
         protected DefaultControlImpl(Context context) {
             super(context);
@@ -174,7 +176,7 @@ public class DefaultRemoteControl implements MediaControl {
         }
 
         @Override
-        public void onUpdateMetaData(MetaData metaData) {
+        public void onUpdateMetaData(MediaMetadataCompat metaData) {
             if(mMedaData == null) {
                 //No old meta data, update
                 mMedaData = metaData;
@@ -186,7 +188,7 @@ public class DefaultRemoteControl implements MediaControl {
             }
         }
 
-        protected void updateNotification(List<Action> actions, MetaData metaData) {
+        protected void updateNotification(List<Action> actions, MediaMetadataCompat metaData) {
             String packageName = getContext().getPackageName();
             RemoteViews remoteSmallViews = new RemoteViews(packageName, R.layout.notif_playing_small);
             //add the first 2 action views
@@ -213,11 +215,12 @@ public class DefaultRemoteControl implements MediaControl {
                 remoteSmallViews.setTextViewText(R.id.title, defaultName);
             }
             else {
-                remoteSmallViews.setTextViewText(R.id.title, metaData.header);
-                remoteSmallViews.setTextViewText(R.id.song_name, metaData.artist);
-                if(metaData.artwork != null) {
+                MediaDescriptionCompat mediaDescriptionCompat = metaData.getDescription();
+                remoteSmallViews.setTextViewText(R.id.title, mediaDescriptionCompat.title);
+                remoteSmallViews.setTextViewText(R.id.song_name, mediaDescriptionCompat.subtitle);
+                if(mediaDescriptionCompat.icon != null) {
                     remoteSmallViews.setViewVisibility(R.id.artwork, View.VISIBLE);
-                    remoteSmallViews.setImageViewBitmap(R.id.artwork, metaData.artwork);
+                    remoteSmallViews.setImageViewBitmap(R.id.artwork, mediaDescriptionCompat.icon);
                 }
 
                 if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
@@ -355,7 +358,7 @@ public class DefaultRemoteControl implements MediaControl {
         }
 
         @Override
-        protected void updateNotification(List<Action> actions, MetaData metaData) {
+        protected void updateNotification(List<Action> actions, MediaMetadataCompat metaData) {
 
 
             //not calling super as we use a different notification
@@ -385,12 +388,13 @@ public class DefaultRemoteControl implements MediaControl {
             builder.setStyle(style);
 
             if(metaData != null) {
-                if(metaData.hasArtWork()) {
-                    builder.setLargeIcon(metaData.artwork);
+                MediaDescriptionCompat mediaDescriptionCompat = metaData.getDescription();
+                if(mediaDescriptionCompat.icon != null) {
+                    builder.setLargeIcon(mediaDescriptionCompat.icon);
                 }
 
-                builder.setContentTitle(metaData.title);
-                builder.setContentText(metaData.artist);
+                builder.setContentTitle(mediaDescriptionCompat.title);
+                builder.setContentText(mediaDescriptionCompat.subtitle);
             }
             notificationManagerCompat.notify(R.id.rotor_notification_id, builder.build());
         }

@@ -20,7 +20,7 @@ import android.os.Parcel;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.twistedequations.rotor.Action;
-import com.twistedequations.rotor.toolbox.Rotor;
+import com.twistedequations.rotor.Rotor;
 
 import junit.framework.TestCase;
 

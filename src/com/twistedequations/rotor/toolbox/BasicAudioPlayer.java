@@ -22,17 +22,18 @@ import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.twistedequations.rotor.Action;
 import com.twistedequations.rotor.Player;
 import com.twistedequations.rotor.Playlist;
+import com.twistedequations.rotor.Position;
+import com.twistedequations.rotor.Rotor;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class BasicAudioPlayer extends Player implements Runnable {
     //Dependencies
@@ -46,7 +47,8 @@ public class BasicAudioPlayer extends Player implements Runnable {
     private int sampleRate = 0;
     private int channels = 0;
     private int bitrate = 0;
-    private long presentationTimeUs = 0;
+    private AtomicLong presentationTime = new AtomicLong();
+    private AtomicLong cachedDuration = new AtomicLong();
     private long duration = 0;
     private boolean isRunning;
 
@@ -97,6 +99,11 @@ public class BasicAudioPlayer extends Player implements Runnable {
         }
 
         isPreformingAction = false;
+    }
+
+    @Override
+    public Position getPosition() {
+        return Position.get(presentationTime.get(), duration, cachedDuration.get());
     }
 
     private void play() {
@@ -229,6 +236,7 @@ public class BasicAudioPlayer extends Player implements Runnable {
             boolean sawInputEOS = false;
             boolean sawOutputEOS = false;
 
+            long presentationTimeUs = 0;
             while (!sawOutputEOS && !stop) {
                 // pause implementation
                 waitPlay();
@@ -252,7 +260,9 @@ public class BasicAudioPlayer extends Player implements Runnable {
                         }
                         else {
                             presentationTimeUs = extractor.getSampleTime();
+                            presentationTime.set(presentationTimeUs / 1000);
                             long cachedDuration = extractor.getCachedDuration();
+                            this.cachedDuration.set(cachedDuration);
                         }
 
                         codec.queueInputBuffer(inputBufIndex, 0, sampleSize, presentationTimeUs, sawInputEOS ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
@@ -350,8 +360,11 @@ public class BasicAudioPlayer extends Player implements Runnable {
             sampleRate = 0;
             channels = 0;
             bitrate = 0;
-            presentationTimeUs = 0;
+            presentationTime.set(0);
             duration = 0;
+            presentationTimeUs = 0;
+
+            playlist.next();
 
             setState(Rotor.STATE_WAITING);
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 05/01/2015 Patrick
+ * Copyright (C) 24/01/2015 Patrick
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,34 @@
  * limitations under the License.
  */
 
-package com.twistedequations.rotor.toolbox;
+package com.twistedequations.rotor;
 
-import com.twistedequations.rotor.MetaData;
-import com.twistedequations.rotor.MetaDataStack;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Parcel;
+import android.os.Parcelable;
 
-public class DefaultMetaDataStack extends MetaDataStack {
+public class MediaDescriptionCompat implements Parcelable {
+
+    public String mediaID;
+
+    public CharSequence title;
+
+    public CharSequence subtitle;
+
+    public CharSequence description;
+
+    public Bitmap icon;
+
+    public Uri iconUri;
 
     @Override
-    public MetaData requestMetaData() {
-        return null;
+    public int describeContents() {
+        return 0;
     }
 
     @Override
-    public void updateMetaData(MetaData metaData) {
+    public void writeToParcel(Parcel parcel, int i) {
 
     }
 }

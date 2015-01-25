@@ -1,7 +1,5 @@
 package com.twistedequations.rotor;
 
-import java.util.List;
-
 /**
  * Copyright (C) 07/01/2015 Patrick
  * <p/>
@@ -25,5 +23,5 @@ public interface MediaControl {
 
     public void updateState(int state);
 
-    public void onUpdateMetaData(MetaData metaData);
+    public void onUpdateMetaData(MediaMetadataCompat metaData);
 }

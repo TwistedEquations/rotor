@@ -18,8 +18,6 @@ package com.twistedequations.rotor;
 
 import android.os.*;
 
-import com.twistedequations.rotor.toolbox.Rotor;
-
 
 public class RotorTask implements Runnable {
 

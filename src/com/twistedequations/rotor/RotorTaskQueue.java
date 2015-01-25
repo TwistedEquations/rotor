@@ -18,7 +18,7 @@ package com.twistedequations.rotor;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class RotorAsync implements Runnable {
+public class RotorTaskQueue implements Runnable {
 
     private LinkedBlockingQueue<RotorTask> taskQueue = new LinkedBlockingQueue<>();
     private boolean run;

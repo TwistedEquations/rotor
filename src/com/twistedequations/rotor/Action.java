@@ -20,8 +20,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.DrawableRes;
 
-import com.twistedequations.rotor.toolbox.Rotor;
-
 import java.util.HashMap;
 import java.util.Map;
 

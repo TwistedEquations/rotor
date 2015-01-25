@@ -1,6 +1,6 @@
 
 
-package com.twistedequations.rotor.toolbox;
+package com.twistedequations.rotor;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,14 +8,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.*;
 import android.os.Process;
-
-import com.twistedequations.rotor.Action;
-import com.twistedequations.rotor.MediaControl;
-import com.twistedequations.rotor.MediaControlListener;
-import com.twistedequations.rotor.Player;
-import com.twistedequations.rotor.RotorAsync;
-import com.twistedequations.rotor.RotorTask;
-import com.twistedequations.rotor.StateListener;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -46,15 +38,16 @@ public class Rotor implements Runnable {
 
     private Context context;
     private Player player;
-    private Set<StateListener> listeners = Collections.synchronizedSet(new HashSet<StateListener>());
-    private RotorAsync rotorAsync = new RotorAsync();
+    private RotorTaskQueue rotorTaskQueue = new RotorTaskQueue();
 
     private final Object lock = new Object();
     private boolean run;
     private boolean paused;
     private AtomicInteger currentState = new AtomicInteger(STATE_WAITING);
     private Handler handler = new Handler(Looper.getMainLooper());
-    private Set<MediaControl> mediaControls = new HashSet<>();
+    private Set<MediaControl> mediaControls =  Collections.synchronizedSet(new HashSet<MediaControl>());
+    private Set<StateListener> listeners = Collections.synchronizedSet(new HashSet<StateListener>());
+    private MetaDataClient metaDataClient;
 
     public Rotor(Context context, Player player) {
         this.context = context.getApplicationContext();
@@ -86,6 +79,14 @@ public class Rotor implements Runnable {
         }
     }
 
+    public void setMetaDataClient(MetaDataClient metaDataClient) {
+        this.metaDataClient = metaDataClient;
+    }
+
+    public MetaDataClient getMetaDataClient() {
+        return metaDataClient;
+    }
+
     public void asyncAction(Action action, ActionFinishedListener actionFinishedListener) {
         RotorTask rotorTask = new RotorTask(player, action, new RotorTask.TaskListener(actionFinishedListener) {
             @Override
@@ -100,7 +101,7 @@ public class Rotor implements Runnable {
                 }
             }
         });
-        rotorAsync.add(rotorTask);
+        rotorTaskQueue.add(rotorTask);
     }
 
     public void asyncAction(Action action) {
@@ -111,7 +112,7 @@ public class Rotor implements Runnable {
         run = true;
         Thread thread = new Thread(this, "Rotor state thread");
         thread.start();
-        rotorAsync.start();
+        rotorTaskQueue.start();
 
         IntentFilter intentFilter = new IntentFilter(Rotor.INTENT_ACTION);
         context.registerReceiver(broadcastReceiver, intentFilter);
@@ -126,7 +127,7 @@ public class Rotor implements Runnable {
     public void destroy() {
         listeners.clear();
         run = false;
-        rotorAsync.stop();
+        rotorTaskQueue.stop();
         context.unregisterReceiver(broadcastReceiver);
         synchronized (lock) {
             if(paused) {
@@ -150,6 +151,10 @@ public class Rotor implements Runnable {
         return currentState.get();
     }
 
+    public boolean hasMetaDataClient() {
+        return metaDataClient != null;
+    }
+
     public void updateState() {
         synchronized (lock) {
             if(paused) {
@@ -163,11 +168,26 @@ public class Rotor implements Runnable {
         //Start of the thread for the state
         android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
         while(run) {
+
+            //update the player state if it has changed
             int state = player.getState();
             if(currentState.get() != state) {
                 onStateChange(state);
             }
             currentState.set(state);
+
+            //Update the remotes with metadata
+            if(!mediaControls.isEmpty()) {
+                MediaMetadataCompat metaData = callMetaDataClient();
+                if(metaData != null) {
+                    synchronized (mediaControls) {
+                        for(MediaControl mediaControl : mediaControls) {
+                            mediaControl.onUpdateMetaData(metaData);
+                        }
+                    }
+                }
+            }
+
             //wait until an action has been preformed or 1 second passes
             synchronized (lock) {
                 try {
@@ -179,6 +199,27 @@ public class Rotor implements Runnable {
                     break;
                 }
             }
+        }
+    }
+
+    private MediaMetadataCompat callMetaDataClient() {
+        if(hasMetaDataClient()) {
+
+            //IF there is pending metadata get it
+            if(metaDataClient.isPending()) {
+                return metaDataClient.getMetaData();
+            }
+
+            //Check if the client is in an async operation
+            if(metaDataClient.isAync()) {
+                return null;
+            }
+
+            metaDataClient.requestMetaData(player.getPosition());
+            return null;
+        }
+        else {
+            return null;
         }
     }
 
