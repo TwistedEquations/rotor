@@ -1,5 +1,7 @@
 package com.twistedequations.rotor;
 
+import android.support.annotation.Nullable;
+
 /**
  * Copyright (C) 07/01/2015 Patrick
  * <p/>
@@ -17,11 +19,30 @@ package com.twistedequations.rotor;
  */
 public interface MediaControl {
 
+    /**
+     * Create the media control, eg post the initial notification
+     */
     public void create();
 
+    /**
+     * Create the media control, eg cancel the notification
+     */
     public void destroy();
 
+    /**
+     * Called when the player state changes
+     * @param state the players new state
+     */
     public void updateState(int state);
 
+    /**
+     * Called when the metadata has changed
+     * @param metaData the new meta data to display
+     */
     public void onUpdateMetaData(MediaMetadataCompat metaData);
+
+    /**
+     * Called after create, used to pass actions back to rotor. This will also be called just before destroy
+     */
+    public void setRotor(@Nullable Rotor rotor);
 }

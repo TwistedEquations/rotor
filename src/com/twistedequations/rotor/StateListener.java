@@ -28,5 +28,5 @@ package com.twistedequations.rotor;
  */
 public interface StateListener {
 
-    public void onStateChange(int state);
+    public void onStateChange(int state, Player player);
 }

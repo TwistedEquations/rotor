@@ -120,6 +120,7 @@ public class Rotor implements Runnable {
         synchronized (mediaControls) {
             for(MediaControl mediaControl : mediaControls) {
                 mediaControl.create();
+                mediaControl.setRotor(this);
             }
         }
     }
@@ -142,6 +143,7 @@ public class Rotor implements Runnable {
         synchronized (mediaControls) {
             for(MediaControl mediaControl : mediaControls) {
                 mediaControl.destroy();
+                mediaControl.setRotor(null);
             }
             mediaControls.clear();
         }
@@ -229,7 +231,7 @@ public class Rotor implements Runnable {
             public void run() {
                 synchronized (listeners) {
                     for(StateListener listener : listeners) {
-                        listener.onStateChange(state);
+                        listener.onStateChange(state, player);
                     }
                 }
 
@@ -244,7 +246,7 @@ public class Rotor implements Runnable {
 
     private StateListener playerListener = new StateListener() {
         @Override
-        public void onStateChange(int state) {
+        public void onStateChange(int state, Player player) {
             updateState();
         }
     };

@@ -19,6 +19,7 @@ package com.twistedequations.rotor;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Player interface used in rotor. This abstract class manages the set of listeners for the player state and also notifies the listenrs
@@ -38,7 +39,7 @@ public abstract class Player {
 
     protected void notifyListeners() {
         for(StateListener listener : listeners) {
-            listener.onStateChange(getState());
+            listener.onStateChange(getState(), this);
         }
     }
 

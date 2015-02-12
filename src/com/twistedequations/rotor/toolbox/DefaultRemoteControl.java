@@ -27,6 +27,7 @@ import android.media.RemoteControlClient;
 import android.media.session.MediaSession;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.view.View;
@@ -100,6 +101,9 @@ public class DefaultRemoteControl implements MediaControl {
     public void onUpdateMetaData(MediaMetadataCompat metaData) {
         control.onUpdateMetaData(metaData);
     }
+
+    @Override
+    public void setRotor(@Nullable Rotor rotor) {}
 
     protected String getDefaultName() {
         return getContext().getApplicationInfo().loadLabel(getContext().getPackageManager()).toString();
@@ -359,7 +363,6 @@ public class DefaultRemoteControl implements MediaControl {
 
         @Override
         protected void updateNotification(List<Action> actions, MediaMetadataCompat metaData) {
-
 
             //not calling super as we use a different notification
             Notification.Builder builder = new Notification.Builder(getContext());

@@ -181,6 +181,10 @@ public class BasicAudioPlayer extends Player implements Runnable {
             // Read track header
             MediaFormat format = null;
             try {
+                int tracks = extractor.getTrackCount();
+                if(tracks < 1) {
+                    throw new IllegalArgumentException("No tracks in extractor");
+                }
                 format = extractor.getTrackFormat(0);
                 mime = format.getString(MediaFormat.KEY_MIME);
                 sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
@@ -364,10 +368,7 @@ public class BasicAudioPlayer extends Player implements Runnable {
             duration = 0;
             presentationTimeUs = 0;
 
-            playlist.next();
-
             setState(Rotor.STATE_WAITING);
-
         }
         if(stop && resetLatch != null) {
             resetLatch.countDown();
