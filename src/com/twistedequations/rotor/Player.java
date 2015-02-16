@@ -22,37 +22,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Player interface used in rotor. This abstract class manages the set of listeners for the player state and also notifies the listenrs
+ * Player interface used in rotor.
  */
-public abstract class Player {
+public interface Player {
 
-    private Set<StateListener> listeners = new HashSet<>();
-    private AtomicInteger currentState = new AtomicInteger(Rotor.STATE_WAITING);
+    public void preformAction(Action action);
 
-    public void addListener(StateListener listener) {
-        this.listeners.add(listener);
-    }
+    public Position getPosition();
 
-    public void removeListener(StateListener listener) {
-        this.listeners.remove(listener);
-    }
+    public int getState();
 
-    protected void notifyListeners() {
-        for(StateListener listener : listeners) {
-            listener.onStateChange(getState(), this);
-        }
-    }
-
-    protected void setState(int state) {
-        currentState.set(state);
-        notifyListeners();
-    }
-
-    public abstract void preformAction(Action action);
-
-    public abstract Position getPosition();
-
-    public int getState() {
-        return currentState.get();
-    }
+    public void addListener(StateListener playerListener);
 }

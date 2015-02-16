@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class BasicAudioPlayer extends Player implements Runnable {
+public class BasicAudioPlayer extends StatePlayer implements Runnable {
     //Dependencies
     private Playlist playlist;
 
